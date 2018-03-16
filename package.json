@@ -1,0 +1,13 @@
+{
+	"name": "s",
+	"version": "0.1.0",
+	"description": "Short and simple link shortening",
+	"main": "server.js",
+	"repository": "https://github.com/brussell98/s",
+	"author": "Brussell",
+	"private": true,
+	"dependencies": {
+		"mongoose": "^5.0.10",
+		"restify": "^6.3.4"
+	}
+}
