@@ -14,8 +14,9 @@ TODO:
 	- [x] Visit link
 	- [x] Shorten url
 	- [ ] Delete link
-	- [ ] Create account
-	- [ ] Authenticate
+	- [x] Create account
+	- [x] Authenticate
+	- [x] Change password
 	- [ ] Get links for user
 	- [ ] Ratelimit
 - [x] Short id generator
@@ -25,11 +26,12 @@ TODO:
 	- [ ] Accounts
 		- [ ] Create
 		- [ ] Log in
+		- [ ] Change password
 - [x] Analytics
 	- [x] Link visited
 	- [x] Created at
 
 ## Notes
 
-Option to account-lock shortening   
-Option to disable account creation
+- Option to account-lock shortening
+- Option to disable account creation

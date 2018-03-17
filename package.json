@@ -7,7 +7,9 @@
 	"author": "Brussell",
 	"private": true,
 	"dependencies": {
+		"bcrypt": "^1.0.3",
 		"mongoose": "^5.0.10",
-		"restify": "^6.3.4"
+		"restify": "^6.3.4",
+		"shortid": "^2.2.8"
 	}
 }

@@ -8,6 +8,7 @@ const UrlRegex = new RegExp('^(https?:\\/\\/)?'+ // protocol
 	'(\\/[-a-z\\d%@_.~+&:]*)*'+ // path
 	'(\\?[;&a-z\\d%@_.,~+&:=-]*)?'+ // query string
 	'(\\#[-a-z\\d_]*)?$', 'i'); // fragment locator
+const validPassRegex = new RegExp('^([a-z]+|\\d+)$', 'i'); // Doesn't contain only letters or numbers
 
 function isValidId(input) {
 	return typeof input === 'string' && input.split('').every(c => validChars.includes(c));
@@ -17,4 +18,12 @@ function isValidUrl(input) {
 	return typeof input === 'string' && UrlRegex.test(input);
 }
 
-module.exports = { isValidId, isValidUrl };
+function isValidPassword(input) {
+	return typeof input === 'string' && input.length >= 8 && input.length <= 72 && validPassRegex.test(input);
+}
+
+function isValidUsername(input) {
+	return typeof input === 'string' && input.trim().length >= 4 && input.trim().length <= 40;
+}
+
+module.exports = { isValidId, isValidUrl, isValidPassword, isValidUsername };

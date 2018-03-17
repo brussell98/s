@@ -1,7 +1,9 @@
 const { isValidId, isValidUrl } = require('../utils/utils.js');
 
 module.exports = function(server, database, config) {
-	server.get('/l/:id', async (req, res, next) => {
+	server.get(/(?:\/api)?\/l\/([a-zA-Z0-9]+)/, async (req, res, next) => {
+		req.params.id = req.params[0];
+
 		let link;
 		if (isValidId(req.params.id))
 			link = await database.getLink(req.params.id, true);
@@ -15,7 +17,7 @@ module.exports = function(server, database, config) {
 		return next();
 	});
 
-	server.get('/l/:id/info', async (req, res, next) => {
+	server.get('/api/link/:id/info', async (req, res, next) => {
 		let link;
 		if (isValidId(req.params.id))
 			link = await database.getLink(req.params.id, true);
@@ -35,7 +37,7 @@ module.exports = function(server, database, config) {
 		return next();
 	});
 
-	server.post('/l/shorten', async (req, res, next) => {
+	server.post('/api/shorten', async (req, res, next) => {
 		if (!isValidUrl(req.body.url)) {
 			res.status(404);
 			res.json({ message: 'Valid url required' });

@@ -13,6 +13,14 @@ const Counter = mongoose.model('counters', new mongoose.Schema({
 	seq: { type: Number, default: 10000 }
 }));
 
+const User = mongoose.model('users', new mongoose.Schema({
+	_id: String,
+	password: { type: String, select: false },
+	username: { type: String, maxlength: 40, minlength: 4, trim: true, unique: true, index: { unique: true } },
+	token: { type: String, select: false, unique: true, index: { unique: true } },
+	createdAt: { type: Date, default: Date.now }
+}));
+
 function connect(config) {
 	mongoose.connect(`mongodb://${config.user}:${config.pass}@${config.host}:${config.port}/${config.database}?authSource=admin`);
 
@@ -61,9 +69,61 @@ async function createLink(url) {
 	});
 }
 
+/**
+ * Returns a User document
+ * @async
+ * @param {String} id - The user's id
+ * @param {Object} [options]
+ * @param {Boolean} [options.dangerousFields=false] - Return token and hashed password
+ * @returns {Promise<DocumentQuery>} The User document
+ */
+async function getUserById(id, options = { }) {
+	if (options.dangerousFields)
+		return User.findOne({ _id: id }).select('+password +token');
+	return User.findOne({ _id: id }).select('-password -token');
+}
+
+/**
+ * Returns a User document
+ * @async
+ * @param {String} username - The user's name
+ * @param {Object} [options]
+ * @param {Boolean} [options.dangerousFields=false] - Return token and hashed password
+ * @returns {Promise<DocumentQuery>} The User document
+ */
+async function getUserByName(username, options = { }) {
+	if (options.dangerousFields)
+		return User.findOne({ username }).select('+password +token');
+	return User.findOne({ username }).select('-password -token');
+}
+
+/**
+ * Creates a User document
+ * @param {Object} data - Data to store in the document
+ * @returns {Promise<DocumentQuery>} The new Link document
+ */
+function createUser(data) {
+	return User.create(data);
+}
+
+/**
+ * Updates a User document
+ * @async
+ * @param {String} id - The user's id
+ * @param {Object} data - Data to store in the document
+ * @returns {Promise<DocumentQuery>} The updated User document
+ */
+function updateUser(id, data) {
+	return User.findByIdAndUpdate(id, data, { new: true });
+}
+
 module.exports = {
 	connect,
 	initIfNeeded,
 	getLink,
-	createLink
+	createLink,
+	getUserById,
+	getUserByName,
+	createUser,
+	updateUser
 };
