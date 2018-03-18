@@ -13,12 +13,13 @@ TODO:
 - [ ] Restify server
 	- [x] Visit link
 	- [x] Shorten url
-	- [ ] Delete link
+	- [x] Delete link
 	- [x] Create account
 	- [x] Authenticate
 	- [x] Change password
 	- [ ] Get links for user
 	- [ ] Ratelimit
+		- [ ] Custom ratelimiter that isn't garbage
 - [x] Short id generator
 - [ ] Webpages
 	- [ ] Home

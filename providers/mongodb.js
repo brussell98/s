@@ -3,6 +3,7 @@ const base58 = require('../utils/base58.js');
 
 const Link = mongoose.model('links', new mongoose.Schema({
 	_id: { type: String, required: true },
+	ownerId: String,
 	expanded: { type: String, required: true },
 	visits: { type: Number, default: 0 },
 	createdAt: { type: Date, default: Date.now() }
@@ -59,14 +60,36 @@ function getLink(id, increment=false) {
  * Creates a Link document
  * @async
  * @param {String} url - Url to shorten
+ * @param {String} [userId] - The userId to assign the link to
  * @returns {Promise<DocumentQuery>} The new Link document
  */
-async function createLink(url) {
+async function createLink(url, userId) {
 	const nextInSeq = (await Counter.findByIdAndUpdate('linkCount', { $inc: { seq: 1 } }, { new: true })).seq;
 	return await Link.create({
 		_id: base58.encode(nextInSeq),
+		ownerId: userId || undefined,
 		expanded: url
 	});
+}
+
+/**
+ * Deletes a Link document
+ * @async
+ * @param {String} id - Link id
+ * @param {String} userId - The user that requested the deletion
+ * @returns {String} The result as a status code
+ */
+async function deleteLink(id, userId) {
+	const link = await Link.findById(id);
+
+	if (!link)
+		return 404;
+
+	if (link.ownerId !== userId)
+		return 401;
+
+	await link.remove();
+	return 200;
 }
 
 /**
@@ -98,6 +121,20 @@ async function getUserByName(username, options = { }) {
 }
 
 /**
+ * Returns a User document
+ * @async
+ * @param {String} token - The user's token
+ * @param {Object} [options]
+ * @param {Boolean} [options.dangerousFields=false] - Return token and hashed password
+ * @returns {Promise<DocumentQuery>} The User document
+ */
+async function getUserByToken(token, options = { }) {
+	if (options.dangerousFields)
+		return User.findOne({ token }).select('+password +token');
+	return User.findOne({ token }).select('-password -token');
+}
+
+/**
  * Creates a User document
  * @param {Object} data - Data to store in the document
  * @returns {Promise<DocumentQuery>} The new Link document
@@ -122,8 +159,10 @@ module.exports = {
 	initIfNeeded,
 	getLink,
 	createLink,
+	deleteLink,
 	getUserById,
 	getUserByName,
+	getUserByToken,
 	createUser,
 	updateUser
 };

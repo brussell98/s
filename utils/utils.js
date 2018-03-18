@@ -26,4 +26,13 @@ function isValidUsername(input) {
 	return typeof input === 'string' && input.trim().length >= 4 && input.trim().length <= 40;
 }
 
-module.exports = { isValidId, isValidUrl, isValidPassword, isValidUsername };
+function requireAuth(req, res, next) {
+	if (!req.username) {
+		res.status(401);
+		res.json({ message: 'Authentication required' });
+	}
+
+	return next();
+}
+
+module.exports = { isValidId, isValidUrl, isValidPassword, isValidUsername, requireAuth };

@@ -2,7 +2,8 @@ const bcrypt = require('bcrypt');
 const saltRounds = 10;
 const crypto = require('crypto');
 const shortid = require('shortid');
-const { isValidPassword, isValidUsername } = require('../utils/utils.js');
+const { isValidPassword, isValidUsername, requireAuth } = require('../utils/utils.js');
+const { plugins } = require('restify');
 
 module.exports = function(server, database, config) {
 	server.post('/api/auth', async (req, res, next) => {
@@ -24,7 +25,13 @@ module.exports = function(server, database, config) {
 		return next();
 	});
 
-	server.post('/api/register', async (req, res, next) => {
+	server.post('/api/register', plugins.throttle({ burst: 1, rate: 0.5, xff: true }), async (req, res, next) => {
+		if (!config.allowNewUsers) {
+			res.status(401);
+			res.json({ message: 'Account creation is not allowed' });
+			return next();
+		}
+
 		if (!isValidUsername(req.body.username) || !isValidPassword(req.body.password)) {
 			res.status(401);
 			res.json({ message: 'Usernames must be from 4 to 40 characters. Passwords must be from 8 to 72 characters and not contain only letters or numbers' });
@@ -54,7 +61,7 @@ module.exports = function(server, database, config) {
 		return next();
 	});
 
-	server.patch('/api/user/:id/password', async (req, res, next) => {
+	server.patch('/api/user/:id/password', requireAuth, async (req, res, next) => {
 		if (!isValidPassword(req.body.password) || !isValidPassword(req.body.newPassword)) {
 			res.status(400);
 			res.json({ message: 'Passwords must be from 8 to 72 characters and not contain only letters or numbers' });
