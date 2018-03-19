@@ -17,7 +17,7 @@ TODO:
 	- [x] Create account
 	- [x] Authenticate
 	- [x] Change password
-	- [ ] Get links for user
+	- [x] Get links for user
 	- [ ] Ratelimit
 		- [ ] Custom ratelimiter that isn't garbage
 - [x] Short id generator
@@ -31,8 +31,3 @@ TODO:
 - [x] Analytics
 	- [x] Link visited
 	- [x] Created at
-
-## Notes
-
-- Option to account-lock shortening
-- Option to disable account creation

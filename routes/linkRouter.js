@@ -39,6 +39,17 @@ module.exports = function(server, database, config) {
 		return next();
 	});
 
+	server.get('/api/user/:id/links', requireAuth, async (req, res, next) => {
+		if (req.username !== req.params.id) {
+			res.status(401);
+			res.json({ message: 'You can only request your own links' });
+			return next();
+		}
+
+		res.json(await database.getLinksByOwner(req.params.id));
+		return next();
+	});
+
 	server.post('/api/shorten', plugins.throttle({ burst: 2, rate: 1, xff: true }), async (req, res, next) => {
 		if (!isValidUrl(req.body.url)) {
 			res.status(404);
