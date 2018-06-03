@@ -70,10 +70,13 @@
 									<td>{{ new Date(props.item.createdAt).toLocaleString() }}</td>
 									<td>{{ props.item.expanded }}</td>
 									<td class="justify-center layout px-0">
-										<v-btn icon class="mx-0" @click.native.stop="copyLink(props.item)">
-											<v-icon color="grey darken-3">mdi-content-copy</v-icon>
-										</v-btn>
-										<v-tooltip>
+										<v-tooltip top>
+											<v-btn slot="activator" icon class="mx-0" @click.native.stop="copyLink(props.item)">
+												<v-icon color="grey darken-3">mdi-content-copy</v-icon>
+											</v-btn>
+											<span>Copy link</span>
+										</v-tooltip>
+										<v-tooltip top>
 											<v-btn slot="activator" icon class="mx-0" @click.native.stop="deleteLink(props.item)">
 												<v-icon color="grey darken-3">delete</v-icon>
 											</v-btn>
@@ -226,37 +229,6 @@
 					{ text: 'Actions', value: 'id', align: 'center', sortable: false, width: '120px' }
 				],
 				links: [],
-				_links: [{
-					id: 'aRcz',
-					expanded: 'https://nekos.moe',
-					visits: 12,
-					createdAt: new Date().valueOf()
-				}, {
-					id: 'zRyX',
-					expanded: 'https://bots.ondiscord.xyz/bots/12784673453253',
-					visits: 0,
-					createdAt: new Date('5-30-2018').valueOf()
-				}, {
-					id: '35Adt',
-					expanded: 'https://bots.ondiscord.xyz/bots/53452342324',
-					visits: 34,
-					createdAt: new Date('5-31-2018').valueOf()
-				}, {
-					id: 'aRcz0',
-					expanded: 'https://nekos.moe',
-					visits: 12,
-					createdAt: new Date().valueOf()
-				}, {
-					id: 'aRcz1',
-					expanded: 'https://nekos.moe',
-					visits: 12,
-					createdAt: new Date().valueOf()
-				}, {
-					id: 'aRcz2',
-					expanded: 'https://nekos.moe',
-					visits: 12,
-					createdAt: new Date().valueOf()
-				}],
 				toDelete: null,
 				deleteDialog: false,
 				changePassDialog: false,
