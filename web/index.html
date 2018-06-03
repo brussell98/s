@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+	<title>s | Link shortener</title>
+	<meta name="description" content="Short and simple link shortening">
+	<meta name="author" content="Brussell">
+	<meta name="theme-color" content="#1e88e5">
+	<link href='https://fonts.googleapis.com/css?family=Roboto:300,400,500,700|Material+Icons' rel="stylesheet" type="text/css">
+	<link href="css/materialdesignicons.min.css" media="all" rel="stylesheet" type="text/css" />
+	<link href="https://unpkg.com/vuetify/dist/vuetify.min.css" rel="stylesheet" type="text/css"></link>
+	<link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon-16x16.png">
+	<link rel="manifest" href="favicon/site.webmanifest">
+	<link rel="mask-icon" href="favicon/safari-pinned-tab.svg" color="#5bbad5">
+	<link rel="shortcut icon" href="favicon/favicon.ico">
+	<meta name="msapplication-TileColor" content="#1e88e5">
+	<meta name="msapplication-config" content="favicon/browserconfig.xml">
+</head>
+<body>
+	<div id="app">
+		<v-app :dark="darkTheme">
+			<v-toolbar fixed app dark color="blue darken-1">
+				<v-toolbar-title>s | Link shortener</v-toolbar-title>
+				<v-spacer></v-spacer>
+				<v-toolbar-items>
+						<v-btn v-show="user" flat @click.native.stop="logout">Log out<v-icon right>mdi-logout-variant</v-icon></v-btn>
+				</v-toolbar-items>
+			</v-toolbar>
+			<main>
+				<v-content>
+					<v-container>
+						<v-layout row wrap>
+							<v-flex xs12>
+								<p class="display-1 mt-5">Shorten a Link</p>
+							</v-flex>
+							<v-flex lg5 md8 sm10 xs12>
+								<v-form v-model="shorten.isValid">
+									<v-text-field v-model="shorten.url" type="url" label="URL to shorten" :rules="urlRules"
+										prepend-icon="mdi-link-variant" required></v-text-field>
+								</v-form>
+							</v-flex>
+							<v-flex xs2>
+								<v-btn color="success" :loading="isShortening" :disabled="!shorten.url || !shorten.isValid || isShortening"
+									@click.native.stop="shortenLink">Shorten</v-btn>
+							</v-flex>
+						</v-layout>
+						<v-layout v-if="user" column>
+							<p class="display-1 mt-5">My Links</p>
+							<v-dialog v-model="deleteDialog" persistent max-width="360px">
+								<v-card>
+									<v-card-title class="headline">Delete link?</v-card-title>
+									<v-card-text v-if="toDelete">After deleting this link <strong>{{ location.origin + '/link/' + toDelete.id }}</strong> will no longer point to <strong>{{ toDelete.expanded }}</strong>. This action can not be undone.</v-card-text>
+									<v-card-actions>
+										<v-spacer></v-spacer>
+										<v-btn color="grey" flat @click.native.stop="(deleteDialog = false), (toDelete = null)">Cancel</v-btn>
+										<v-btn color="red darken-1" flat @click.native.stop="confirmDelete">Delete</v-btn>
+									</v-card-actions>
+								</v-card>
+							</v-dialog>
+							<v-data-table :headers="linkTableHeaders" :items="links" item-key="id" :loading="isTableLoading"
+								:pagination.sync="linkTablePagination" :rows-per-page-items="[10, 25, 50, { text: 'All', value: -1 }]"
+								no-data-text="No links" class="elevation-1">
+								<template slot="items" slot-scope="props">
+									<td>{{ props.item.id }}</td>
+									<td class="text-xs-right">{{ (props.item.visits || 0).toLocaleString() }}</td>
+									<td>{{ new Date(props.item.createdAt).toLocaleString() }}</td>
+									<td>{{ props.item.expanded }}</td>
+									<td class="justify-center layout px-0">
+										<v-btn icon class="mx-0" @click.native.stop="copyLink(props.item)">
+											<v-icon color="grey darken-3">mdi-content-copy</v-icon>
+										</v-btn>
+										<v-tooltip>
+											<v-btn slot="activator" icon class="mx-0" @click.native.stop="deleteLink(props.item)">
+												<v-icon color="grey darken-3">delete</v-icon>
+											</v-btn>
+											<span>Delete link</span>
+										</v-tooltip>
+									</td>
+								</template>
+							</v-data-table>
+						</v-layout>
+						<v-layout v-if="!user" row wrap justify-space-around>
+							<v-flex xs12>
+								<p class="display-1 mt-5">My Account</p>
+								<p class="mb-5">Creating an account allows you to view information about your links. You will be able to see how many times your link has been visited, copy links, and delete unwanted links.</p>
+							</v-flex>
+							<v-flex xl3 lg4 md6 sm8 xs12>
+								<v-card class="mb-3">
+									<v-card-title primary-title>
+										<div style="width:100%;margin-right:16px">
+											<h3 class="headline">Log in</h3>
+											<v-form v-model="auth.loginValid">
+												<v-text-field v-model="auth.username" label="Username" hide-details :rules="required"
+													name="authUsername" prepend-icon="mdi-account" min="4" max="40" required></v-text-field>
+												<v-text-field v-model="auth.password" label="Password" hide-details :rules="required"
+													name="authPassword" prepend-icon="mdi-lock" type="password" min="8" max="72" required></v-text-field>
+											</v-form>
+										</div>
+									</v-card-title>
+									<v-card-actions>
+										<v-spacer></v-spacer>
+										<v-btn flat color="blue darken-1" @click.native.stop="login" :disabled="!auth.loginValid">Log in</v-btn>
+									</v-card-actions>
+								</v-card>
+							</v-flex>
+							<v-flex xl3 lg4 md6 sm8 xs12>
+								<v-card>
+									<v-card-title primary-title>
+										<div style="width:100%;margin-right:16px">
+											<h3 class="headline">Create Account</h3>
+											<p class="mb-0">Create an account to save your links</p>
+											<v-form v-model="auth.regValid">
+												<v-text-field v-model="auth.regUsername" label="Username" :rules="usernameRules"
+													prepend-icon="mdi-account" min="4" max="40" required
+													hint="A username can be from 4 to 40 characters long"></v-text-field>
+												<v-text-field v-model="auth.regPassword" label="Password" :rules="passwordRules"
+													prepend-icon="mdi-lock" type="password" min="8" max="72" required
+													hint="A password can be from 8 to 72 characters long"></v-text-field>
+											</v-form>
+										</div>
+									</v-card-title>
+									<v-card-actions>
+										<v-spacer></v-spacer>
+										<v-btn flat color="blue darken-1" @click.native.stop="register" :disabled="!auth.regValid">Create</v-btn>
+									</v-card-actions>
+								</v-card>
+							</v-flex>
+						</v-layout>
+						<v-layout v-if="user" column>
+							<p class="display-1 mt-5">My Account</p>
+							<p class="headline">{{ user.username }}</p>
+							<p class="mb-1">Short links: {{ links.length }}</p>
+							<p class="mb-1">Created: {{ new Date(user.createdAt).toLocaleString() }}</p>
+							<p>User ID: {{ user.id }}</p>
+							<v-btn style="width:fit-content" color="warning" light @click.native.stop="changePassDialog = true"><v-icon left>mdi-lock-reset</v-icon>Change password</v-btn>
+							<v-dialog v-model="changePassDialog" persistent max-width="500px">
+								<v-card>
+									<v-card-title class="headline">Change Password</v-card-title>
+									<v-card-text>
+										<v-text-field v-model="passChange.oldPass" label="Current Password" :rules="passwordRules"
+											prepend-icon="mdi-lock" type="password" min="8" max="72" required></v-text-field>
+										<v-text-field v-model="passChange.newPass" label="New Password" :rules="passwordRules"
+											prepend-icon="mdi-lock-plus" type="password" min="8" max="72" required
+											hint="A password can be from 8 to 72 characters long"></v-text-field>
+									</v-card-text>
+									<v-card-actions>
+										<v-spacer></v-spacer>
+										<v-btn color="grey" flat @click.native.stop="closeChangePass">Cancel</v-btn>
+										<v-btn color="warning" flat :disabled="!passChange.isValid"
+											@click.native.stop="changePassword">Change password</v-btn>
+									</v-card-actions>
+								</v-card>
+							</v-dialog>
+						</v-layout>
+					</v-container>
+				</v-content>
+			</main>
+			<v-footer app>
+				<span class="ml-4">&copy; Brussell 2018</span>
+				<span class="ml-4"><a href="https://github.com/brussell98/s" target="_blank">Source code</a></span>
+				<v-spacer></v-spacer>
+				<span class="mr-4"><a @click="localStorage.setItem('darkTheme', (darkTheme = Math.abs(darkTheme - 1)))">{{ darkTheme ? 'Light' : 'Dark' }} Theme</a></span>
+			</v-footer>
+			<input ref="copyText" style="display:none" type="text"></input>
+		</v-app>
+	</div>
+
+	<script src="https://unpkg.com/vue/dist/vue.min.js"></script>
+	<script src="https://unpkg.com/vuetify/dist/vuetify.min.js"></script>
+	<script>
+		const isValidUrl = new RegExp('^(https?:\\/\\/)?'+ // protocol
+			'((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ // domain name and extension
+			'((\\d{1,3}\\.){3}\\d{1,3}))'+ // OR ip (v4) address
+			'(\\:\\d+)?'+ // port
+			'(\\/[-a-z\\d%@_.~+&:]*)*'+ // path
+			'(\\?[;&a-z\\d%@_.,~+&:=-]*)?'+ // query string
+			'(\\#[-a-z\\d_]*)?$', 'i'); // fragment locator
+
+		new Vue({
+			el: '#app',
+			data: {
+				isTableLoading: true,
+				isShortening: false,
+				darkTheme: localStorage.hasOwnProperty('darkTheme') ? +localStorage.getItem('darkTheme') : 0,
+				user: localStorage.hasOwnProperty('user') ? JSON.parse(localStorage.getItem('user')) : null,
+				shorten: {
+					isValid: true,
+					url: ''
+				},
+				urlRules: [
+					v => !v || isValidUrl.test(v) || 'Invalid link'
+				],
+				auth: {
+					loginValid: true,
+					regValid: true,
+					username: '',
+					password: '',
+					regUsername: '',
+					regPassword: ''
+				},
+				required: [v => !!v || 'This is required'],
+				usernameRules: [
+					v => !!v || 'A username is required',
+					v => v.length >= 4 || 'Name must be greater than 4 characters',
+					v => v.length <= 40 || 'Name must be less than 40 characters'
+				],
+				passwordRules: [
+					v => !!v || 'A password is required',
+					v => v.length >= 4 || 'Password must be greater than 4 characters',
+					v => v.length <= 40 || 'Password must be less than 40 characters',
+					v => !/^([a-z]+|\d+)$/i.test(v) || 'Password cannot contain only letters or numbers'
+				],
+				linkTablePagination: {
+					sortBy: 'createdAt',
+					descending: true
+				},
+				linkTableHeaders: [
+					{ text: 'ID', value: 'id', width: '160px' },
+					{ text: 'Visits', value: 'visits', width: '120px' },
+					{ text: 'Creation Date', value: 'createdAt', width: '260px' },
+					{ text: 'Destination', value: 'expanded', sortable: false },
+					{ text: 'Actions', value: 'id', align: 'center', sortable: false, width: '120px' }
+				],
+				links: [],
+				_links: [{
+					id: 'aRcz',
+					expanded: 'https://nekos.moe',
+					visits: 12,
+					createdAt: new Date().valueOf()
+				}, {
+					id: 'zRyX',
+					expanded: 'https://bots.ondiscord.xyz/bots/12784673453253',
+					visits: 0,
+					createdAt: new Date('5-30-2018').valueOf()
+				}, {
+					id: '35Adt',
+					expanded: 'https://bots.ondiscord.xyz/bots/53452342324',
+					visits: 34,
+					createdAt: new Date('5-31-2018').valueOf()
+				}, {
+					id: 'aRcz0',
+					expanded: 'https://nekos.moe',
+					visits: 12,
+					createdAt: new Date().valueOf()
+				}, {
+					id: 'aRcz1',
+					expanded: 'https://nekos.moe',
+					visits: 12,
+					createdAt: new Date().valueOf()
+				}, {
+					id: 'aRcz2',
+					expanded: 'https://nekos.moe',
+					visits: 12,
+					createdAt: new Date().valueOf()
+				}],
+				toDelete: null,
+				deleteDialog: false,
+				changePassDialog: false,
+				passChange: {
+					isValid: true,
+					oldPass: '',
+					newPass: ''
+				}
+			},
+			computed: {
+				location() {
+					return window.location;
+				}
+			},
+			methods: {
+				async getMyLinks() {
+					try {
+						const resp = await fetch('api/user/@me/links', { headers: {
+							'Authorization': this.user.token
+						} });
+						const json = await resp.json();
+						this.isTableLoading = false;
+
+						if (!resp.ok)
+							return console.warn(resp.status + ' - ' + json.message);
+
+						this.links = json.links;
+						return;
+					} catch (error) {
+						this.isTableLoading = false;
+						return console.error(error);
+					}
+				},
+				async shortenLink() {
+					this.isShortening = true;
+					try {
+						const resp = await fetch('api/shorten', {
+							body: JSON.stringify({ url: this.shorten.url }),
+							method: 'POST',
+							headers: { 'Authorization': this.user.token, 'Content-Type': 'application/json' }
+						});
+						const json = await resp.json();
+						this.isShortening = false;
+
+						if (!resp.ok)
+							return console.warn(resp.status + ' - ' + json.message);
+
+						this.shorten.url = '';
+						this.links.push(json);
+						return;
+					} catch (error) {
+						this.isShortening = false;
+						return console.error(error);
+					}
+				},
+				async login() {
+					try {
+						if (!this.auth.loginValid)
+							return;
+
+						const resp = await fetch('api/auth', {
+							body: JSON.stringify({ username: this.auth.username, password: this.auth.password }),
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' }
+						});
+						const json = await resp.json();
+
+						if (!resp.ok)
+							return console.warn(resp.status + ' - ' + json.message);
+
+						this.auth.username = '';
+						this.auth.password = '';
+						this.user = json;
+						localStorage.setItem('user', JSON.stringify(this.user));
+						return this.getMyLinks();
+					} catch (error) {
+						return console.error(error);
+					}
+				},
+				logout() {
+					this.user = null;
+					return localStorage.removeItem('user');
+				},
+				async register() {
+					try {
+						if (!this.auth.regValid)
+							return;
+
+						const resp = await fetch('api/register', {
+							body: JSON.stringify({ username: this.auth.regUsername, password: this.auth.regPassword }),
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' }
+						});
+						const json = await resp.json();
+
+						if (!resp.ok)
+							return console.warn(resp.status + ' - ' + json.message);
+
+						this.auth.regUsername = '';
+						this.auth.regPassword = '';
+						this.isTableLoading = false;
+						this.user = json;
+						return localStorage.setItem('user', JSON.stringify(this.user));
+					} catch (error) {
+						return console.error(error);
+					}
+				},
+				closeChangePass() {
+					this.changePassDialog = false;
+					this.passChange.oldPass = '';
+					this.passChange.newPass = '';
+					return;
+				},
+				async changePassword() {
+					this.changePassDialog = false;
+					try {
+						if (!this.passChange.isValid)
+							return;
+
+						const resp = await fetch('api/user/@me/password', {
+							body: JSON.stringify({ password: this.passChange.oldPass, newPassword: this.passChange.newPass }),
+							method: 'PATCH',
+							headers: { Authorization: this.user.token, 'Content-Type': 'application/json' }
+						});
+						const json = await resp.json();
+
+						if (!resp.ok)
+							return console.warn(resp.status + ' - ' + json.message);
+
+						this.passChange.oldPass = '';
+						this.passChange.newPass = '';
+						this.user.token = json.token;
+						return localStorage.setItem('user', JSON.stringify(this.user));
+					} catch (error) {
+						return console.error(error);
+					}
+				},
+				copyLink(link) {
+					this.$refs.copyText.value = `${this.location.origin}/l/${link.id}`;
+					this.$refs.copyText.style = '';
+					this.$refs.copyText.select();
+					document.execCommand('copy');
+					return this.$refs.copyText.style = 'display:none';
+				},
+				deleteLink(link) {
+					this.toDelete = link;
+					this.deleteDialog = true;
+					return;
+				},
+				async confirmDelete() {
+					this.deleteDialog = false;
+					try {
+						const resp = await fetch('api/link/' + this.toDelete.id, {
+							method: 'DELETE',
+							headers: { 'Authorization': this.user.token }
+						});
+
+						if (!resp.ok) {
+							const json = await resp.json();
+							return console.warn(resp.status + ' - ' + json.message);
+						}
+
+						this.links.splice(this.links.findIndex(l => l.id === this.toDelete.id));
+						this.toDelete = null;
+						return;
+					} catch (error) {
+						console.error(error);
+					}
+				}
+			},
+			mounted() {
+				if (this.user)
+					this.getMyLinks();
+			}
+		});
+	</script>
+</body>
+</html>

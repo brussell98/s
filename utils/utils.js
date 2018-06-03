@@ -8,7 +8,7 @@ const UrlRegex = new RegExp('^(https?:\\/\\/)?'+ // protocol
 	'(\\/[-a-z\\d%@_.~+&:]*)*'+ // path
 	'(\\?[;&a-z\\d%@_.,~+&:=-]*)?'+ // query string
 	'(\\#[-a-z\\d_]*)?$', 'i'); // fragment locator
-const validPassRegex = new RegExp('^([a-z]+|\\d+)$', 'i'); // Doesn't contain only letters or numbers
+const invalidPasswordRegex = /^([a-z]+|\d+)$/i; // Contains only letters or only numbers
 
 function isValidId(input) {
 	return typeof input === 'string' && input.split('').every(c => validChars.includes(c));
@@ -19,7 +19,7 @@ function isValidUrl(input) {
 }
 
 function isValidPassword(input) {
-	return typeof input === 'string' && input.length >= 8 && input.length <= 72 && validPassRegex.test(input);
+	return typeof input === 'string' && input.length >= 8 && input.length <= 72 && !invalidPasswordRegex.test(input);
 }
 
 function isValidUsername(input) {
@@ -30,6 +30,7 @@ function requireAuth(req, res, next) {
 	if (!req.username) {
 		res.status(401);
 		res.json({ message: 'Authentication required' });
+		return next(false);
 	}
 
 	return next();

@@ -65,24 +65,49 @@ async function initIfNeeded() {
 }
 
 /**
+ * Transforms a document for use in the api
+ * @param {Document} doc - The raw document
+ * @returns {Promise<Document>} The transformed document
+ */
+function transform(doc) {
+	if (!doc)
+		return doc;
+
+	doc.id = doc._id;
+	delete doc._id;
+	return doc;
+}
+
+/**
+ * Transforms documents for use in the api
+ * @param {DocumentArray} docs - The raw documents
+ * @returns {Promise<DocumentArray>} The transformed documents
+ */
+function transformDocs(docs) {
+	return docs.map(transform);
+}
+
+/**
  * Returns a Link document
+ * @async
  * @param {String} id - The link id
  * @param {Boolean} [increment=false] - Increment the link's visit count
  * @returns {Promise<Link>} The Link document
  */
-function getLink(id, increment=false) {
-	return increment
+async function getLink(id, increment=false) {
+	return transform(await (increment
 		? Link.findByIdAndUpdate(id, { $inc: { visits: 1 } }).select('-__v').lean()
-		: Link.findById(id).select('-__v').lean();
+		: Link.findById(id).select('-__v').lean()));
 }
 
 /**
  * Returns an array of Link documents
+ * @async
  * @param {String} ownerId - The user id to get documents for
  * @returns {Promise<Array<Link>>} An array of link documents
  */
-function getLinksByOwner(ownerId) {
-	return Link.find({ ownerId }).select('-__v').lean();
+async function getLinksByOwner(ownerId) {
+	return transformDocs(await Link.find({ ownerId }).select('-__v').lean());
 }
 
 /**
@@ -94,11 +119,20 @@ function getLinksByOwner(ownerId) {
  */
 async function createLink(url, userId) {
 	const nextInSeq = (await Counter.findByIdAndUpdate('linkCount', { $inc: { seq: 1 } }, { new: true })).seq;
-	return await Link.create({
+	const newLink = await Link.create({
 		_id: base58.encode(nextInSeq),
 		ownerId: userId || undefined,
-		expanded: url
+		expanded: url,
+		createdAt: Date.now()
 	});
+
+	return {
+		id: newLink._id,
+		ownerId: newLink.ownerId,
+		expanded: newLink.expanded,
+		visits: newLink.visits,
+		createdAt: newLink.createAt
+	};
 }
 
 /**
@@ -131,8 +165,8 @@ async function deleteLink(id, userId) {
  */
 async function getUserById(id, options = { }) {
 	if (options.dangerousFields)
-		return User.findOne({ _id: id }).select('+password +token -__v');
-	return User.findOne({ _id: id }).select('-password -token -__v');
+		return transform(await User.findOne({ _id: id }).select('+password +token -__v'));
+	return transform(await User.findOne({ _id: id }).select('-password -token -__v'));
 }
 
 /**
@@ -145,8 +179,8 @@ async function getUserById(id, options = { }) {
  */
 async function getUserByName(username, options = { }) {
 	if (options.dangerousFields)
-		return User.findOne({ username }).select('+password +token -__v');
-	return User.findOne({ username }).select('-password -token -__v');
+		return transform(await User.findOne({ username }).select('+password +token -__v'));
+	return transform(await User.findOne({ username }).select('-password -token -__v'));
 }
 
 /**
@@ -159,17 +193,26 @@ async function getUserByName(username, options = { }) {
  */
 async function getUserByToken(token, options = { }) {
 	if (options.dangerousFields)
-		return User.findOne({ token }).select('+password +token -__v');
-	return User.findOne({ token }).select('-password -token -__v');
+		return transform(await User.findOne({ token }).select('+password +token -__v'));
+	return transform(await User.findOne({ token }).select('-password -token -__v'));
 }
 
 /**
  * Creates a User document
- * @param {Object} data - Data to store in the document
- * @returns {Promise<User>} The new Link document
+ * @async
+ * @param {Object} data - Data for the new User document
+ * @returns {Promise<User>} The new user's data
  */
-function createUser(data) {
-	return User.create(data);
+async function createUser(data) {
+	const newUser = await User.create({
+		_id: data.id,
+		username: data.username,
+		password: data.password,
+		token: data.token,
+		createdAt: Date.now()
+	});
+
+	return transform(newUser);
 }
 
 /**
@@ -179,8 +222,10 @@ function createUser(data) {
  * @param {Object} data - Data to store in the document
  * @returns {Promise<User>} The updated User document
  */
-function updateUser(id, data) {
-	return User.findByIdAndUpdate(id, data, { new: true }).select('-__v').lean();
+async function updateUser(id, data) {
+	const updatedUser = User.findByIdAndUpdate(id, data, { new: true }).select('-__v').lean();
+
+	return transform(updatedUser);
 }
 
 module.exports = {

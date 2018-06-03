@@ -1,6 +1,7 @@
 module.exports = {
 	server: {
-		port: 8080
+		port: 8080,
+		serveWebFiles: true // Disable this if you're using something like Nginx to serve the website or have a custom front-end
 	},
 	db: {
 		provider: 'mongodb', // mongodb

@@ -2,9 +2,7 @@ const { isValidId, isValidUrl, requireAuth } = require('../utils/utils.js');
 const { plugins } = require('restify');
 
 module.exports = function(server, database, config) {
-	server.get(/(?:\/api)?\/(?:link|l)\/([a-zA-Z0-9]+)(?:\?.+|$)/, plugins.throttle({ burst: 0, rate: 0 }), async (req, res, next) => {
-		req.params.id = req.params[0];
-
+	async function handleShortLink(req, res, next) {
 		let link;
 		if (isValidId(req.params.id))
 			link = await database.getLink(req.params.id, true);
@@ -16,7 +14,12 @@ module.exports = function(server, database, config) {
 		res.send();
 
 		return next();
-	});
+	}
+
+	server.get('/api/link/:id(^[a-zA-Z0-9]+)', handleShortLink); // Should not have rate-limit
+	server.get('/api/l/:id(^[a-zA-Z0-9]+)', handleShortLink);
+	server.get('/link/:id(^[a-zA-Z0-9]+)', handleShortLink);
+	server.get('/l/:id(^[a-zA-Z0-9]+)', handleShortLink);
 
 	server.get('/api/link/:id/info', async (req, res, next) => {
 		let link;
@@ -25,7 +28,7 @@ module.exports = function(server, database, config) {
 
 		if (link) {
 			res.json({
-				id: link._id,
+				id: link.id,
 				ownerId: link.ownerId,
 				expanded: link.expanded,
 				createdAt: link.createdAt,
@@ -40,19 +43,19 @@ module.exports = function(server, database, config) {
 	});
 
 	server.get('/api/user/:id/links', requireAuth, async (req, res, next) => {
-		if (req.username !== req.params.id) {
+		if (req.params.id !== '@me' && req.username !== req.params.id) {
 			res.status(401);
 			res.json({ message: 'You can only request your own links' });
 			return next();
 		}
 
-		res.json(await database.getLinksByOwner(req.params.id));
+		res.json({ links: await database.getLinksByOwner(req.params.id === '@me' ? req.username : req.params.id) });
 		return next();
 	});
 
 	server.post('/api/shorten', plugins.throttle({ burst: 2, rate: 1, xff: true }), async (req, res, next) => {
 		if (!isValidUrl(req.body.url)) {
-			res.status(404);
+			res.status(400);
 			res.json({ message: 'Valid url required' });
 			return next();
 		}
@@ -67,7 +70,7 @@ module.exports = function(server, database, config) {
 
 		res.status(201);
 		res.json({
-			id: link._id,
+			id: link.id,
 			ownerId: link.ownerId,
 			expanded: link.expanded,
 			createdAt: link.createdAt,
@@ -76,7 +79,7 @@ module.exports = function(server, database, config) {
 		return next();
 	});
 
-	server.delete('/api/link/:id', requireAuth, async (req, res, next) => {
+	server.del('/api/link/:id', requireAuth, async (req, res, next) => {
 		if (!isValidId(req.params.id)) {
 			res.status(404);
 			res.json({ message: 'Invalid link id' });

@@ -15,8 +15,11 @@ module.exports = function(server, database, config) {
 
 		const user = await database.getUserByName(req.body.username, { dangerousFields: true });
 
-		if (await bcrypt.compare(req.body.password, user.password))
-			res.json({ token: user.token });
+		if (!user) {
+			res.status(401);
+			res.json({ message: 'Invalid username' });
+		} else if (await bcrypt.compare(req.body.password, user.password))
+			res.json({ id: user.id, username: user.username, token: user.token, createdAt: user.createdAt });
 		else {
 			res.status(401);
 			res.json({ message: 'Invalid password' });
@@ -33,8 +36,8 @@ module.exports = function(server, database, config) {
 		}
 
 		if (!isValidUsername(req.body.username) || !isValidPassword(req.body.password)) {
-			res.status(401);
-			res.json({ message: 'Usernames must be from 4 to 40 characters. Passwords must be from 8 to 72 characters and not contain only letters or numbers' });
+			res.status(400);
+			res.json({ message: 'Usernames must be from 4 to 40 characters. Passwords must be from 8 to 72 characters and not contain only letters or only numbers' });
 			return next();
 		}
 
@@ -45,7 +48,7 @@ module.exports = function(server, database, config) {
 		}
 
 		const user = await database.createUser({
-			_id: shortid.generate(),
+			id: shortid.generate(),
 			username: req.body.username.trim(),
 			password: await bcrypt.hash(req.body.password, saltRounds),
 			token: crypto.randomBytes(32 / 2).toString('hex').slice(0, 32)
@@ -53,7 +56,8 @@ module.exports = function(server, database, config) {
 
 		res.status(201);
 		res.json({
-			id: user._id,
+			id: user.id,
+			username: user.username,
 			token: user.token,
 			createdAt: user.createdAt
 		});
@@ -68,12 +72,16 @@ module.exports = function(server, database, config) {
 			return next();
 		}
 
-		const user = await database.getUserById(req.params.id, { dangerousFields: true });
+		const userId = req.params.id === '@me' ? req.username : req.params.id;
+		const user = await database.getUserById(userId, { dangerousFields: true });
 
-		if (await bcrypt.compare(req.body.password, user.password)) {
+		if (!user) {
+			res.status(404);
+			res.json({ message: 'Invalid user id' });
+		} else if (await bcrypt.compare(req.body.password, user.password)) {
 			const token = crypto.randomBytes(32 / 2).toString('hex').slice(0, 32);
 
-			await database.updateUser(req.params.id, {
+			await database.updateUser(userId, {
 				token,
 				password: await bcrypt.hash(req.body.newPassword, saltRounds)
 			});
