@@ -131,7 +131,7 @@ async function createLink(url, userId) {
 		ownerId: newLink.ownerId,
 		expanded: newLink.expanded,
 		visits: newLink.visits,
-		createdAt: newLink.createAt
+		createdAt: newLink.createdAt
 	};
 }
 

@@ -72,13 +72,13 @@
 									<td class="justify-center layout px-0">
 										<v-tooltip top>
 											<v-btn slot="activator" icon class="mx-0" @click.native.stop="copyLink(props.item)">
-												<v-icon color="grey darken-3">mdi-content-copy</v-icon>
+												<v-icon :color="darkTheme ? 'grey lighten-3' : 'grey darken-3'">mdi-content-copy</v-icon>
 											</v-btn>
 											<span>Copy link</span>
 										</v-tooltip>
 										<v-tooltip top>
 											<v-btn slot="activator" icon class="mx-0" @click.native.stop="deleteLink(props.item)">
-												<v-icon color="grey darken-3">delete</v-icon>
+												<v-icon :color="darkTheme ? 'grey lighten-3' : 'grey darken-3'">delete</v-icon>
 											</v-btn>
 											<span>Delete link</span>
 										</v-tooltip>
